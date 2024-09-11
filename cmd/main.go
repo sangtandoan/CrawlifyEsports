@@ -1,13 +1,14 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/gocolly/colly"
+	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/jedib0t/go-pretty/v6/text"
 )
 
 type Tournament struct {
@@ -66,14 +67,22 @@ func main() {
 	collector.OnHTML("div.fo-nttax-infobox", func(h *colly.HTMLElement) {
 		tournament := Tournament{}
 		tournament.Name = h.ChildText("div:nth-child(1) > div.infobox-header")
+		if tournament.Name == "Upcoming Matches" {
+			return
+		}
+
 		tournament.Name = strings.Replace(tournament.Name, "[e][h]", "", -1)
 
 		h.ForEach("div", func(_ int, el *colly.HTMLElement) {
+			selectorForDate := "div.infobox-description + div"
 			switch el.ChildText("div.infobox-description") {
 			case "Start Date:":
-				tournament.StartDate = formatTime(el.ChildText("div.infobox-description + div"))
+				tournament.StartDate = formatTime(el.ChildText(selectorForDate))
 			case "End Date:":
-				tournament.EndDate = formatTime(el.ChildText("div.infobox-description + div"))
+				tournament.EndDate = formatTime(el.ChildText(selectorForDate))
+			case "Date:":
+				tournament.StartDate = formatTime(el.ChildText(selectorForDate))
+				tournament.EndDate = formatTime(el.ChildText(selectorForDate))
 			default:
 			}
 		})
@@ -92,20 +101,60 @@ func main() {
 	// wg.Wait()
 	collector.Wait()
 
-	enc := json.NewEncoder(os.Stdout)
-	enc.SetIndent("", " ")
+	// Convert struct to json and print to terminal
+	// enc := json.NewEncoder(os.Stdout)
+	// enc.SetIndent("", " ")
+	//
+	// enc.Encode(tournaments)
 
-	enc.Encode(tournaments)
+	renderToTable(tournaments)
 
 	duration := time.Since(start)
 	fmt.Println(duration)
 }
 
+// formatTime change default format from 2006-01-02 to 02-01-2006
 func formatTime(oldTime string) string {
+	if strings.Contains(oldTime, "-??") {
+		oldTime = strings.Replace(oldTime, "-??", "", -1)
+		t, err := time.Parse("2006-01", oldTime)
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		return "??-" + t.Format("01-2006")
+	}
+
 	t, err := time.Parse("2006-01-02", oldTime)
 	if err != nil {
 		fmt.Println(err)
 	}
 
-	return t.Format("02/01/2006")
+	return t.Format("02-01-2006")
+}
+
+func renderToTable(tournaments []Tournament) {
+	t := table.NewWriter()
+	t.SetOutputMirror(os.Stdout)
+	t.SetAutoIndex(true)
+	t.SetTitle("Tournaments")
+	// Use t.Style().something.something to style a specific thing
+	// Use t.SetStyle() to style for a whole table
+	t.Style().Title.Align = text.AlignCenter
+
+	t.AppendHeader(table.Row{"Tournament", "Start Date", "End Date"})
+
+	for _, tournament := range tournaments {
+		t.AppendRow(table.Row{tournament.Name, tournament.StartDate, tournament.EndDate})
+	}
+
+	t.SetColumnConfigs([]table.ColumnConfig{
+		{
+			// Specify name of column to apply config to
+			Name:        "Tournament",
+			AlignHeader: text.AlignCenter,
+		},
+	})
+
+	t.Render()
 }
