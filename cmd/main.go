@@ -3,7 +3,9 @@ package main
 import (
 	"fmt"
 	"os"
+	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gocolly/colly"
@@ -17,15 +19,66 @@ type Tournament struct {
 	EndDate   string `json:"end_date"`
 }
 
+const (
+	lol  = "League of Legends"
+	cs2  = "Counter Strike 2"
+	val  = "Valorant"
+	pubg = "PUBG"
+)
+
+var (
+	games = map[string]string{
+		lol:  "https://liquipedia.net/leagueoflegends/Main_Page",
+		cs2:  "https://liquipedia.net/counterstrike/Main_Page",
+		val:  "https://liquipedia.net/valorant/Main_Page",
+		pubg: "https://liquipedia.net/pubg/Main_Page",
+	}
+
+	tournaments = make(map[string][]Tournament) // map[string][]tournament{}, init empty map
+)
+
 func main() {
 	start := time.Now()
-	tournaments := []Tournament{}
-	games := []string{
-		"https://liquipedia.net/leagueoflegends/Main_Page",
-		"https://liquipedia.net/counterstrike/Main_Page",
-		"https://liquipedia.net/valorant/Main_Page",
-		"https://liquipedia.net/pubg/Main_Page",
+
+	wg := &sync.WaitGroup{}
+	for key, value := range games {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			scrapingForGame(value, tournaments, key)
+		}()
 	}
+
+	wg.Wait()
+	// Convert struct to json and print to terminal
+	// enc := json.NewEncoder(os.Stdout)
+	// enc.SetIndent("", " ")
+	//
+	// enc.Encode(tournaments)
+	//
+
+	for _, tournament := range tournaments {
+		slices.SortFunc(tournament, func(a, b Tournament) int {
+			startDateA, _ := time.Parse("02-01-2006", a.StartDate)
+			startDateB, _ := time.Parse("02-01-2006", b.StartDate)
+			if startDateA.Before(startDateB) {
+				return -1
+			} else {
+				return 1
+			}
+		})
+	}
+
+	for key, tournament := range tournaments {
+		renderToTable(key, tournament)
+		fmt.Println()
+	}
+
+	duration := time.Since(start)
+	fmt.Println(duration)
+}
+
+func scrapingForGame(link string, tournaments map[string][]Tournament, key string) {
 	collector := colly.NewCollector(colly.Async(true))
 
 	collector.OnError(func(r *colly.Response, err error) {
@@ -54,7 +107,7 @@ func main() {
 			// wg.Add(1)
 
 			// go func() {
-			// 	defer wg.Done()
+			// defer wg.Done()
 			// Turn relative path in href into absolute path
 			link := el.Request.AbsoluteURL(el.Attr("href"))
 
@@ -71,7 +124,7 @@ func main() {
 			return
 		}
 
-		tournament.Name = strings.Replace(tournament.Name, "[e][h]", "", -1)
+		tournament.Name = strings.ReplaceAll(tournament.Name, "[e][h]", "")
 
 		h.ForEach("div", func(_ int, el *colly.HTMLElement) {
 			selectorForDate := "div.infobox-description + div"
@@ -83,40 +136,21 @@ func main() {
 			case "Date:":
 				tournament.StartDate = formatTime(el.ChildText(selectorForDate))
 				tournament.EndDate = formatTime(el.ChildText(selectorForDate))
-			default:
 			}
 		})
 
-		tournaments = append(tournaments, tournament)
+		tournaments[key] = append(tournaments[key], tournament)
 	})
 
-	// wg := sync.WaitGroup{}
-	for _, game := range games {
-		// wg.Add(1)
-		// go func() {
-		// defer wg.Done()
-		collector.Visit(game)
-		// }()
-	}
+	collector.Visit(link)
 	// wg.Wait()
 	collector.Wait()
-
-	// Convert struct to json and print to terminal
-	// enc := json.NewEncoder(os.Stdout)
-	// enc.SetIndent("", " ")
-	//
-	// enc.Encode(tournaments)
-
-	renderToTable(tournaments)
-
-	duration := time.Since(start)
-	fmt.Println(duration)
 }
 
 // formatTime change default format from 2006-01-02 to 02-01-2006
 func formatTime(oldTime string) string {
 	if strings.Contains(oldTime, "-??") {
-		oldTime = strings.Replace(oldTime, "-??", "", -1)
+		oldTime = strings.ReplaceAll(oldTime, "-??", "")
 		t, err := time.Parse("2006-01", oldTime)
 		if err != nil {
 			fmt.Println(err)
@@ -133,11 +167,11 @@ func formatTime(oldTime string) string {
 	return t.Format("02-01-2006")
 }
 
-func renderToTable(tournaments []Tournament) {
+func renderToTable(gameName string, tournaments []Tournament) {
 	t := table.NewWriter()
 	t.SetOutputMirror(os.Stdout)
 	t.SetAutoIndex(true)
-	t.SetTitle("Tournaments")
+	t.SetTitle(gameName)
 	// Use t.Style().something.something to style a specific thing
 	// Use t.SetStyle() to style for a whole table
 	t.Style().Title.Align = text.AlignCenter
