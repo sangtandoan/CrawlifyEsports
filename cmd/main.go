@@ -34,20 +34,56 @@ var (
 		pubg: "https://liquipedia.net/pubg/Main_Page",
 	}
 
+	// channels = map[string]chan Tournament{
+	// 	lol:  make(chan Tournament),
+	// 	cs2:  make(chan Tournament),
+	// 	val:  make(chan Tournament),
+	// 	pubg: make(chan Tournament),
+	// }
+
 	tournaments = make(map[string][]Tournament) // map[string][]tournament{}, init empty map
 )
 
 func main() {
 	start := time.Now()
+	// closeChan := make(chan bool)
+	// done := make(chan bool)
 
 	wg := &sync.WaitGroup{}
 	for key, value := range games {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
+			// scrapingForGame(value, channels[key], done)
 			scrapingForGame(value, tournaments, key)
 		}()
 	}
+
+	// go func() {
+	// loop:
+	// 	for {
+	// 		select {
+	// 		case t := <-channels[lol]:
+	// 			tournaments[lol] = append(tournaments[lol], t)
+	// 		case t := <-channels[cs2]:
+	// 			tournaments[cs2] = append(tournaments[cs2], t)
+	// 		case t := <-channels[val]:
+	// 			tournaments[val] = append(tournaments[val], t)
+	// 		case t := <-channels[pubg]:
+	// 			tournaments[pubg] = append(tournaments[pubg], t)
+	// 		case <-closeChan:
+	// 			break loop
+	// 		}
+	// 	}
+	// }()
+	//
+	// go func() {
+	// 	for i := 0; i < len(games); i++ {
+	// 		<-done
+	// 	}
+	//
+	// 	close(closeChan)
+	// }()
 
 	wg.Wait()
 	// Convert struct to json and print to terminal
@@ -57,6 +93,7 @@ func main() {
 	// enc.Encode(tournaments)
 	//
 
+	// Sort tournaments based on StartDate
 	for _, tournament := range tournaments {
 		slices.SortFunc(tournament, func(a, b Tournament) int {
 			startDateA, _ := time.Parse("02-01-2006", a.StartDate)
@@ -77,6 +114,77 @@ func main() {
 	duration := time.Since(start)
 	fmt.Println(duration)
 }
+
+// func scrapingForGame(link string, ch chan<- Tournament, done chan<- bool) {
+// 	collector := colly.NewCollector(colly.Async(true))
+//
+// 	collector.OnError(func(r *colly.Response, err error) {
+// 		fmt.Println(err)
+// 	})
+//
+// 	collector.OnHTML("ul#tournaments-menu-upcoming", func(h *colly.HTMLElement) {
+// 		// wg := sync.WaitGroup{}
+// 		h.ForEach("a.dropdown-item", func(_ int, el *colly.HTMLElement) {
+// 			// wg.Add(1)
+//
+// 			// go func() {
+// 			// 	defer wg.Done()
+// 			// Turn relative path in href into absolute path
+// 			link := el.Request.AbsoluteURL(el.Attr("href"))
+// 			el.Request.Visit(link)
+// 			// }()
+// 		})
+// 		// wg.Wait()
+// 	})
+//
+// 	collector.OnHTML("ul#tournaments-menu-ongoing", func(h *colly.HTMLElement) {
+// 		// wg := sync.WaitGroup{}
+//
+// 		h.ForEach("a.dropdown-item", func(_ int, el *colly.HTMLElement) {
+// 			// wg.Add(1)
+//
+// 			// go func() {
+// 			// defer wg.Done()
+// 			// Turn relative path in href into absolute path
+// 			link := el.Request.AbsoluteURL(el.Attr("href"))
+//
+// 			el.Request.Visit(link)
+// 			// }()
+// 		})
+// 		// wg.Wait()
+// 	})
+//
+// 	collector.OnHTML("div.fo-nttax-infobox", func(h *colly.HTMLElement) {
+// 		tournament := Tournament{}
+// 		tournament.Name = h.ChildText("div:nth-child(1) > div.infobox-header")
+// 		if tournament.Name == "Upcoming Matches" {
+// 			return
+// 		}
+//
+// 		tournament.Name = strings.ReplaceAll(tournament.Name, "[e][h]", "")
+//
+// 		h.ForEach("div", func(_ int, el *colly.HTMLElement) {
+// 			selectorForDate := "div.infobox-description + div"
+// 			switch el.ChildText("div.infobox-description") {
+// 			case "Start Date:":
+// 				tournament.StartDate = formatTime(el.ChildText(selectorForDate))
+// 			case "End Date:":
+// 				tournament.EndDate = formatTime(el.ChildText(selectorForDate))
+// 			case "Date:":
+// 				tournament.StartDate = formatTime(el.ChildText(selectorForDate))
+// 				tournament.EndDate = formatTime(el.ChildText(selectorForDate))
+// 			}
+// 		})
+//
+// 		// tournaments[key] = append(tournaments[key], tournament)
+// 		ch <- tournament
+// 	})
+//
+// 	collector.Visit(link)
+// 	// wg.Wait()
+// 	collector.Wait()
+// 	done <- true
+// }
 
 func scrapingForGame(link string, tournaments map[string][]Tournament, key string) {
 	collector := colly.NewCollector(colly.Async(true))
