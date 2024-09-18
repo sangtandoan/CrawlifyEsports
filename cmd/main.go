@@ -22,10 +22,11 @@ type Tournament struct {
 }
 
 type Match struct {
-	TournamentName string   `json:"tournament_name"`
-	TeamLeft       string   `json:"team_left"`
-	TeamRight      string   `json:"team_right"`
-	Links          []string `json:"links"`
+	TournamentName string    `json:"tournament_name"`
+	TeamLeft       string    `json:"team_left"`
+	TeamRight      string    `json:"team_right"`
+	StartTime      time.Time `json:"start_time"`
+	Links          []string  `json:"links"`
 }
 
 type CommandLineArgs struct {
@@ -212,6 +213,8 @@ func main() {
 
 func scrapingForGame(link string, tournaments map[string][]Tournament, key string, args CommandLineArgs, matches map[string][]Match) {
 	collector := colly.NewCollector(colly.Async(true), colly.CacheDir(""))
+	// Need to create a new Collector if clone not working
+	matchesCollector := colly.NewCollector(colly.Async(true), colly.CacheDir(""))
 
 	collector.OnRequest(func(r *colly.Request) {
 		r.Headers.Set("Cache-Control", "no-cache")
@@ -224,6 +227,34 @@ func scrapingForGame(link string, tournaments map[string][]Tournament, key strin
 
 	collector.OnError(func(r *colly.Response, err error) {
 		fmt.Println(err)
+	})
+
+	matchesCollector.OnHTML("div.main-container", func(h *colly.HTMLElement) {
+		tournamentName := h.ChildText("div.tabs-static + div.fo-nttax-infobox-wrapper > div.fo-nttax-infobox > div:nth-child(1) > div.infobox-header")
+		tournamentName = strings.ReplaceAll(tournamentName, "[e][h]", "")
+
+		h.ForEach("table.infobox_matches_content", func(_ int, el *colly.HTMLElement) {
+			startTime := el.ChildText("span.match-countdown")
+			startTime = strings.TrimSpace(strings.ReplaceAll(startTime, "UTC", ""))
+			t, _ := time.Parse("January 02, 2006 - 15:04", startTime)
+			// Load loocal time
+			loc, _ := time.LoadLocation("Local")
+			// Change time to local time
+			t = t.In(loc)
+			match := Match{TournamentName: tournamentName, StartTime: t}
+			match.TeamLeft = el.ChildText("td.team-left span.team-template-text")
+			match.TeamRight = el.ChildText("td.team-right span.team-template-text")
+			match.Links = []string{func() string {
+				if attr, ok := el.DOM.Find("span.match-countdown > a:first-of-type").Attr("href"); ok {
+					return el.Request.AbsoluteURL(strings.TrimSpace(attr))
+				}
+				return ""
+			}()}
+
+			if match.TeamLeft != "TBD" && match.TeamRight != "TBD" {
+				matches[key] = append(matches[key], match)
+			}
+		})
 	})
 
 	collector.OnHTML("ul#tournaments-menu-upcoming", func(h *colly.HTMLElement) {
@@ -267,9 +298,9 @@ func scrapingForGame(link string, tournaments map[string][]Tournament, key strin
 	collector.OnHTML("div.fo-nttax-infobox-wrapper", func(h *colly.HTMLElement) {
 		tournament := Tournament{}
 		tournament.Name = h.ChildText("div:nth-child(1) > div.infobox-header")
-		// if tournament.Name == "Upcoming Matches" {
-		// 	return
-		// }
+		if tournament.Name == "Upcoming Matches" {
+			return
+		}
 
 		tournament.Name = strings.ReplaceAll(tournament.Name, "[e][h]", "")
 
@@ -289,37 +320,18 @@ func scrapingForGame(link string, tournaments map[string][]Tournament, key strin
 		})
 
 		if filterByTier(args.tier, tournament) {
+			link := h.Request.AbsoluteURL(h.Request.URL.Path)
+			matchesCollector.Visit(link)
 			tournaments[key] = append(tournaments[key], tournament)
+
 		}
-		getMatchesFromTournament(tournament.Name, key, h)
 	})
 
 	collector.Visit(link)
 	// wg.Wait()
+
 	collector.Wait()
-}
-
-func getMatchesFromTournament(tournament string, key string, h *colly.HTMLElement) {
-	h.ForEach("table", func(_ int, el *colly.HTMLElement) {
-		startTime := el.ChildText("span.match-countdown")
-		startTime = strings.TrimSpace(strings.ReplaceAll(startTime, "UTC", ""))
-		t, _ := time.Parse("January 02, 2006 - 15:04", startTime)
-		loc, _ := time.LoadLocation("Local")
-		t = t.In(loc)
-		fmt.Println(t.Format("15:04 02-01-2006"))
-		fmt.Println(el.ChildText("td.team-left span.team-template-text"))
-		match := Match{TournamentName: tournament}
-		match.TeamLeft = el.ChildText("td.team-left span.team-template-text")
-		match.TeamRight = el.ChildText("td.team-right span.team-template-text")
-		match.Links = []string{func() string {
-			if attr, ok := el.DOM.Find("span.match-countdown + a:nth-child(1)").Attr("href"); ok {
-				return strings.TrimSpace(attr)
-			}
-			return ""
-		}()}
-
-		matches[key] = append(matches[key], match)
-	})
+	matchesCollector.Wait()
 }
 
 // formatTime change default format from 2006-01-02 to 02-01-2006
@@ -345,8 +357,9 @@ func formatTime(oldTime string) string {
 func renderToTable(gameName string, tournaments []Tournament, matches []Match) {
 	t := createTableWriter(gameName)
 	m := createTableWriter(gameName)
+	addAlignCenterForColumns(m, "Versus", "Time", "Links")
 
-	m.AppendHeader(table.Row{"Tournament", "Versus", "Links"})
+	m.AppendHeader(table.Row{"Tournament", "Versus", "Time", "Links"})
 
 	t.AppendHeader(table.Row{"Tournament", "Start Date", "End Date", "Tier"})
 
@@ -355,7 +368,7 @@ func renderToTable(gameName string, tournaments []Tournament, matches []Match) {
 	}
 
 	for _, match := range matches {
-		m.AppendRow(table.Row{match.TournamentName, match.TeamLeft + " vs " + match.TeamRight, match.Links})
+		m.AppendRow(table.Row{match.TournamentName, match.TeamLeft + " vs " + match.TeamRight, match.StartTime.Format("15:04 02/01/2006"), match.Links})
 	}
 
 	t.Render()
@@ -381,18 +394,53 @@ func createTableWriter(gameName string) table.Writer {
 	return t
 }
 
-func sortByStartDate() {
-	for _, tournament := range tournaments {
-		slices.SortFunc(tournament, func(a, b Tournament) int {
-			startDateA, _ := time.Parse("02-01-2006", a.StartDate)
-			startDateB, _ := time.Parse("02-01-2006", b.StartDate)
-			if startDateA.Before(startDateB) {
-				return -1
-			} else {
-				return 1
-			}
+func addAlignCenterForColumns(t table.Writer, cols ...string) {
+	// cols is just a slice
+	cfg := []table.ColumnConfig{}
+	for _, col := range cols {
+		cfg = append(cfg, table.ColumnConfig{
+			Name:        col,
+			AlignHeader: text.AlignCenter,
 		})
 	}
+
+	t.SetColumnConfigs(cfg)
+}
+
+func sortByStartDate() {
+	wg := &sync.WaitGroup{}
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for _, tournament := range tournaments {
+			slices.SortFunc(tournament, func(a, b Tournament) int {
+				startDateA, _ := time.Parse("02-01-2006", a.StartDate)
+				startDateB, _ := time.Parse("02-01-2006", b.StartDate)
+				if startDateA.Before(startDateB) {
+					return -1
+				} else {
+					return 1
+				}
+			})
+		}
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for _, match := range matches {
+			slices.SortFunc(match, func(a, b Match) int {
+				if a.StartTime.Before(b.StartTime) {
+					return -1
+				} else {
+					return 1
+				}
+			})
+		}
+	}()
+
+	wg.Wait()
 }
 
 func parseCommandLineArgs() CommandLineArgs {
