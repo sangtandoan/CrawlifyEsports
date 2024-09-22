@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/csv"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -9,24 +11,27 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gocarina/gocsv"
 	"github.com/gocolly/colly"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
 )
 
 type Tournament struct {
-	Name      string `json:"name"`
-	StartDate string `json:"start_date"`
-	EndDate   string `json:"end_date"`
-	Tier      string `json:"tier"`
+	GameName  string `json:"-" csv:"game"`
+	Name      string `json:"name" csv:"name"`
+	StartDate string `json:"start_date" csv:"start_date"`
+	EndDate   string `json:"end_date" csv:"end_date"`
+	Tier      string `json:"tier" csv:"tier"`
 }
 
 type Match struct {
-	TournamentName string    `json:"tournament_name"`
-	TeamLeft       string    `json:"team_left"`
-	TeamRight      string    `json:"team_right"`
-	StartTime      time.Time `json:"start_time"`
-	Links          []string  `json:"links"`
+	GameName       string    `json:"-" csv:"game"`
+	TournamentName string    `json:"tournament_name" csv:"tournament_name"`
+	TeamLeft       string    `json:"team_left" csv:"team_left"`
+	TeamRight      string    `json:"team_right" csv:"team_right"`
+	StartTime      time.Time `json:"start_time" csv:"start_time"`
+	Links          []string  `json:"links" csv:"links"`
 }
 
 type CommandLineArgs struct {
@@ -136,6 +141,23 @@ func main() {
 		fmt.Println()
 	}
 
+	err := os.Mkdir("data", 0755)
+	if err != nil {
+		panic(err)
+	}
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		exportJSON()
+	}()
+
+	go func() {
+		defer wg.Done()
+		exportCSV()
+	}()
+	wg.Wait()
+
 	duration := time.Since(start)
 	fmt.Println(duration)
 }
@@ -241,7 +263,7 @@ func scrapingForGame(link string, tournaments map[string][]Tournament, key strin
 			loc, _ := time.LoadLocation("Local")
 			// Change time to local time
 			t = t.In(loc)
-			match := Match{TournamentName: tournamentName, StartTime: t}
+			match := Match{TournamentName: tournamentName, StartTime: t, GameName: key}
 			match.TeamLeft = el.ChildText("td.team-left span.team-template-text")
 			match.TeamRight = el.ChildText("td.team-right span.team-template-text")
 			match.Links = []string{func() string {
@@ -296,7 +318,7 @@ func scrapingForGame(link string, tournaments map[string][]Tournament, key strin
 	})
 
 	collector.OnHTML("div.fo-nttax-infobox-wrapper", func(h *colly.HTMLElement) {
-		tournament := Tournament{}
+		tournament := Tournament{GameName: key}
 		tournament.Name = h.ChildText("div:nth-child(1) > div.infobox-header")
 		if tournament.Name == "Upcoming Matches" {
 			return
@@ -489,4 +511,84 @@ func filterByTier(tier string, tournament Tournament) bool {
 	}
 
 	return true
+}
+
+func exportJSON() {
+	f, err := os.Create("data/tournaments.json")
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+
+	f2, err := os.Create("data/matches.json")
+	if err != nil {
+		panic(err)
+	}
+	defer f2.Close()
+
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		buffer, err := json.Marshal(tournaments)
+		if err != nil {
+			panic(err)
+		}
+
+		f.Write(buffer)
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		json.NewEncoder(f2).Encode(matches)
+	}()
+
+	wg.Wait()
+}
+
+func exportCSV() {
+	f, err := os.Create("data/tournaments.csv")
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+
+	f2, err := os.Create("data/matches.csv")
+	if err != nil {
+		panic(err)
+	}
+	defer f2.Close()
+
+	wg := new(sync.WaitGroup)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		// Using gocsv
+		for _, match := range matches {
+			err = gocsv.MarshalFile(match, f2)
+			if err != nil {
+				panic(err)
+			}
+		}
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		// Using encoding/csv
+		w := csv.NewWriter(f)
+		defer w.Flush()
+		w.Write([]string{"game", "name", "start_date", "end_date", "tier"})
+
+		for key, tournament := range tournaments {
+			for _, t := range tournament {
+				w.Write([]string{key, t.Name, t.StartDate, t.EndDate, t.Tier})
+			}
+		}
+	}()
+
+	wg.Wait()
 }

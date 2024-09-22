@@ -3,6 +3,7 @@ module github.com/FrostJ143/GamesTournamentScraper
 go 1.23.1
 
 require (
+	github.com/gocarina/gocsv v0.0.0-20240520201108-78e41c74b4b1
 	github.com/gocolly/colly v1.2.0
 	github.com/jedib0t/go-pretty/v6 v6.5.9
 )
