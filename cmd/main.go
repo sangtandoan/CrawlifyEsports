@@ -56,6 +56,8 @@ var (
 		"pubg": "PUBG",
 	}
 
+	tiers = make(map[string]string)
+
 	// channels = map[string]chan Tournament{
 	// 	lol:  make(chan Tournament),
 	// 	cs2:  make(chan Tournament),
@@ -133,7 +135,9 @@ func main() {
 	// enc.Encode(tournaments)
 	//
 
-	// Sort tournaments based on StartDate
+	crawlMatchesForLOL()
+
+	// Sort tournaments, matches based on StartDate
 	sortByStartDate()
 
 	for key := range tournaments {
@@ -141,9 +145,13 @@ func main() {
 		fmt.Println()
 	}
 
-	err := os.Mkdir("data", 0755)
-	if err != nil {
-		panic(err)
+	// Check if dir exist, if not create new one
+	_, err := os.Stat("data")
+	if os.IsNotExist(err) {
+		err := os.Mkdir("data", 0755)
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	wg.Add(1)
@@ -152,6 +160,7 @@ func main() {
 		exportJSON()
 	}()
 
+	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		exportCSV()
@@ -238,6 +247,21 @@ func scrapingForGame(link string, tournaments map[string][]Tournament, key strin
 	// Need to create a new Collector if clone not working
 	matchesCollector := colly.NewCollector(colly.Async(true), colly.CacheDir(""))
 
+	ch1 := make(chan Tournament)
+	ch2 := make(chan Match)
+
+	go func() {
+		for tournament := range ch1 {
+			tournaments[key] = append(tournaments[key], tournament)
+		}
+	}()
+
+	go func() {
+		for match := range ch2 {
+			matches[key] = append(matches[key], match)
+		}
+	}()
+
 	collector.OnRequest(func(r *colly.Request) {
 		r.Headers.Set("Cache-Control", "no-cache")
 		r.Headers.Set("Pragma", "no-cache")
@@ -257,8 +281,7 @@ func scrapingForGame(link string, tournaments map[string][]Tournament, key strin
 
 		h.ForEach("table.infobox_matches_content", func(_ int, el *colly.HTMLElement) {
 			startTime := el.ChildText("span.match-countdown")
-			startTime = strings.TrimSpace(strings.ReplaceAll(startTime, "UTC", ""))
-			t, _ := time.Parse("January 02, 2006 - 15:04", startTime)
+			t, _ := time.Parse("January 02, 2006 - 15:04 MST", startTime)
 			// Load loocal time
 			loc, _ := time.LoadLocation("Local")
 			// Change time to local time
@@ -274,7 +297,7 @@ func scrapingForGame(link string, tournaments map[string][]Tournament, key strin
 			}()}
 
 			if match.TeamLeft != "TBD" && match.TeamRight != "TBD" {
-				matches[key] = append(matches[key], match)
+				ch2 <- match
 			}
 		})
 	})
@@ -343,9 +366,9 @@ func scrapingForGame(link string, tournaments map[string][]Tournament, key strin
 
 		if filterByTier(args.tier, tournament) {
 			link := h.Request.AbsoluteURL(h.Request.URL.Path)
+			ch1 <- tournament
+			tiers[link] = tournament.Tier
 			matchesCollector.Visit(link)
-			tournaments[key] = append(tournaments[key], tournament)
-
 		}
 	})
 
@@ -354,6 +377,94 @@ func scrapingForGame(link string, tournaments map[string][]Tournament, key strin
 
 	collector.Wait()
 	matchesCollector.Wait()
+
+	// Ensure not leak goroutines
+	close(ch1)
+	close(ch2)
+}
+
+func crawlMatchesForLOL() {
+	collector := colly.NewCollector()
+
+	collector.OnRequest(func(r *colly.Request) {
+		r.Headers.Set("Cache-Control", "no-cache")
+		r.Headers.Set("Pragma", "no-cache")
+		r.Headers.Set("Expires", "0")
+
+		// Add a timestamp to the URL to bypass cache
+		r.URL.RawQuery += "&t=" + fmt.Sprint(time.Now().Unix())
+	})
+
+	collector.OnError(func(r *colly.Response, err error) {
+		fmt.Println(err)
+	})
+
+	collector.OnHTML("div.panel-box div:nth-child(2) div:nth-child(1) div", func(h *colly.HTMLElement) {
+		wg := new(sync.WaitGroup)
+		mutex := &sync.Mutex{}
+
+		h.ForEach("table", func(_ int, el *colly.HTMLElement) {
+			// wg.Add(1)
+			// go func() {
+			// 	defer wg.Done()
+
+			team_left := el.ChildText("td.team-left")
+			team_right := el.ChildText("td.team-right")
+			if team_left != "TBD" && team_right != "TBD" {
+				link := el.ChildAttr("div.tournament-text-flex a", "href")
+				link = el.Request.AbsoluteURL(link)
+
+				if isTournamentInTiers(link) {
+					// crawl startTime
+					// When parsing a time with a zone abbreviation like MST, if the zone abbreviation has a defined offset in the current location, then that offset is used.
+					// The zone abbreviation "UTC" is recognized as UTC regardless of location.
+					// If the zone abbreviation is unknown, Parse records the time as being in a fabricated location with the given zone abbreviation and a zero offset.
+					// This choice means that such a time can be parsed and reformatted with the same layout losslessly, but the exact instant used in the representation will differ by the actual zone offset.
+					// To avoid such problems, prefer time layouts that use a numeric zone offset, or use ParseInLocation.
+					// -> If time has timezone use time.LoadLocation to load that timezone to parse and load local to parse again
+					startTime := el.ChildText("span.match-countdown span.timer-object")
+					cest, _ := time.LoadLocation("CET")
+					t, _ := time.ParseInLocation("January 02, 2006 - 15:04 MST", startTime, cest)
+					// Load loocal time
+					loc, _ := time.LoadLocation("Local")
+					// timeInUTCPlus7 := time.FixedZone("UTC+7", 7*60*60)
+					// Change time to local time
+					t = t.In(loc)
+
+					// crawl TournamentName
+
+					match := Match{
+						TournamentName: el.ChildText("div.tournament-text-flex a"),
+						TeamLeft:       team_left,
+						TeamRight:      team_right,
+						StartTime:      t,
+					}
+
+					mutex.Lock()
+					matches["lol"] = append(matches["lol"], match)
+					mutex.Unlock()
+				}
+			}
+			// }()
+		})
+
+		wg.Wait()
+	})
+
+	collector.Visit("https://liquipedia.net/leagueoflegends/Liquipedia:Matches")
+}
+
+func isTournamentInTiers(link string) bool {
+	if _, ok := tiers[link]; !ok {
+		temp := strings.Split(link, "/")
+		link = strings.Join(temp[:len(temp)-1], "/")
+
+		if _, ok := tiers[link]; !ok {
+			return false
+		}
+	}
+
+	return true
 }
 
 // formatTime change default format from 2006-01-02 to 02-01-2006
@@ -429,6 +540,7 @@ func addAlignCenterForColumns(t table.Writer, cols ...string) {
 	t.SetColumnConfigs(cfg)
 }
 
+// sortByStartDate sorts Matches and Tournaments in increasing order
 func sortByStartDate() {
 	wg := &sync.WaitGroup{}
 
