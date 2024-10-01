@@ -591,7 +591,7 @@ func parseCommandLineArgs() CommandLineArgs {
 	// Using flag.Var and custom implementation of flag.Value to parse
 	var chosenGames gamesSlice
 	flag.Var(&chosenGames, "games", "select which games want to crawl")
-	tier := flag.String("tier", "b", "slect which tiers to crawl")
+	tier := flag.String("tier", "b", "select which tiers to crawl")
 	ongoing := flag.Bool("ongoing", true, "select ongoing tournaments")
 	upcoming := flag.Bool("upcoming", true, "select upcoming tournaments")
 	flag.Parse()
