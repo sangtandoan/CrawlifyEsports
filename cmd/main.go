@@ -79,7 +79,7 @@ func (gs *gamesSlice) String() string {
 
 // flag.Value interface method
 func (gs *gamesSlice) Set(value string) error {
-	// *gs = append(*gs, value) uses this if want to have multiple flag to set this value
+	// *gs = append(*gs, value) uses this if want to have same multiple flag to set this value
 	*gs = strings.Split(value, ",") // uses this if just want to have one flag to set this value using csv
 	return nil
 }
