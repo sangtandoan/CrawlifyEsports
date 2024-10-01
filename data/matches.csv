@@ -1,22 +1,23 @@
 game,tournament_name,team_left,team_right,start_time,links
-cs2,BLAST Premier: Fall Final 2024,NAVI,Falcons,2024-09-25T17:00:00+07:00,"[""https://liquipedia.net/counterstrike/Special:Stream/twitch/BLAST_Premier""]"
-cs2,BLAST Premier: Fall Final 2024,G2,FaZe,2024-09-25T19:30:00+07:00,"[""https://liquipedia.net/counterstrike/Special:Stream/twitch/BLAST_Premier""]"
-cs2,BLAST Premier: Fall Final 2024,Vitality,Astralis,2024-09-25T22:00:00+07:00,"[""https://liquipedia.net/counterstrike/Special:Stream/twitch/BLAST_Premier""]"
-cs2,BLAST Premier: Fall Final 2024,Spirit,Liquid,2024-09-26T00:30:00+07:00,"[""https://liquipedia.net/counterstrike/Special:Stream/twitch/BLAST_Premier""]"
+cs2,ESL Challenger at DreamHack Atlanta 2024,FLY,BetBoom,2024-10-04T21:30:00+07:00,"[""https://liquipedia.net/counterstrike/Special:Stream/twitch/ESL_Counter-Strike""]"
+cs2,ESL Challenger at DreamHack Atlanta 2024,SAW,Rooster,2024-10-04T22:55:00+07:00,"[""https://liquipedia.net/counterstrike/Special:Stream/twitch/ESL_Counter-Strike""]"
+cs2,ESL Challenger at DreamHack Atlanta 2024,BIG,ODDIK,2024-10-05T00:20:00+07:00,"[""https://liquipedia.net/counterstrike/Special:Stream/twitch/ESL_Counter-Strike""]"
+cs2,ESL Challenger at DreamHack Atlanta 2024,M80,Wildcard,2024-10-05T01:45:00+07:00,"[""https://liquipedia.net/counterstrike/Special:Stream/twitch/ESL_Counter-Strike""]"
 cs2,Intel Extreme Masters Rio 2024,FaZe,FURIA,2024-10-07T21:00:00+07:00,"[""https://liquipedia.net/counterstrike/Special:Stream/twitch/ESL_Counter-Strike""]"
 cs2,Intel Extreme Masters Rio 2024,paiN,MOUZ,2024-10-07T21:00:00+07:00,"[""https://liquipedia.net/counterstrike/Special:Stream/twitch/ESL_Counter-Strike""]"
-cs2,Intel Extreme Masters Rio 2024,NAVI,RA,2024-10-07T22:00:00+07:00,"[""https://liquipedia.net/counterstrike/Special:Stream/twitch/ESL_Counter-Strike""]"
+cs2,Intel Extreme Masters Rio 2024,NAVI,Imperial,2024-10-07T22:00:00+07:00,"[""https://liquipedia.net/counterstrike/Special:Stream/twitch/ESL_Counter-Strike""]"
 cs2,Intel Extreme Masters Rio 2024,COL,Liquid,2024-10-07T22:00:00+07:00,"[""https://liquipedia.net/counterstrike/Special:Stream/twitch/ESL_Counter-Strike""]"
 cs2,Intel Extreme Masters Rio 2024,Vitality,9z,2024-10-07T23:00:00+07:00,"[""https://liquipedia.net/counterstrike/Special:Stream/twitch/ESL_Counter-Strike""]"
 game,tournament_name,team_left,team_right,start_time,links
-,Worlds 2024,MDK,VKE,2024-09-25T19:00:00+07:00,null
-,Worlds 2024,PSG,PNG,2024-09-25T22:00:00+07:00,null
-,Worlds 2024,GAM,SHG,2024-09-26T19:00:00+07:00,null
-,Worlds 2024,100,R7,2024-09-26T22:00:00+07:00,null
+val,VCT Game Changers Pacific 2024,ISU,SL9,2024-10-01T16:00:00+07:00,"[""https://liquipedia.net/valorant/Special:Stream/twitch/Valorant_Pacific""]"
+val,VCT Game Changers Pacific 2024,ZETA GC,BOBA,2024-10-02T12:00:00+07:00,"[""https://liquipedia.net/valorant/Special:Stream/twitch/Valorant_Pacific""]"
+val,VCT Game Changers Pacific 2024,XiP,FL Fe,2024-10-02T15:00:00+07:00,"[""https://liquipedia.net/valorant/Special:Stream/twitch/Valorant_Pacific""]"
 game,tournament_name,team_left,team_right,start_time,links
-val,VCT Ascension Pacific 2024,SPG,FS,2024-09-27T14:00:00+07:00,"[""https://liquipedia.net/valorant/Special:Stream/twitch/Valorant_Pacific""]"
-val,VCT Ascension Pacific 2024,RID,BME,2024-09-27T17:00:00+07:00,"[""https://liquipedia.net/valorant/Special:Stream/twitch/Valorant_Pacific""]"
-val,VCT Game Changers Pacific 2024,ZETA GC,BOBA,2024-10-01T13:00:00+07:00,"[""https://liquipedia.net/valorant/Special:Stream/twitch/Valorant_Pacific""]"
-val,VCT Game Changers Pacific 2024,XiP,FL Fe,2024-10-01T16:00:00+07:00,"[""https://liquipedia.net/valorant/Special:Stream/twitch/Valorant_Pacific""]"
-val,VCT Game Changers Pacific 2024,MIR GC,PFC,2024-10-02T11:00:00+07:00,"[""https://liquipedia.net/valorant/Special:Stream/twitch/Valorant_Pacific""]"
-val,VCT Game Changers Pacific 2024,ISU,SL9,2024-10-02T13:00:00+07:00,"[""https://liquipedia.net/valorant/Special:Stream/twitch/Valorant_Pacific""]"
+,Worlds 2024,BLG,MDK,2024-10-03T19:00:00+07:00,"[""https://liquipedia.net/leagueoflegends/Special:Stream/twitch/Riot_Games""]"
+,Worlds 2024,TES,T1,2024-10-03T20:00:00+07:00,"[""https://liquipedia.net/leagueoflegends/Special:Stream/twitch/Riot_Games""]"
+,Worlds 2024,GEN,WBG,2024-10-03T21:00:00+07:00,"[""https://liquipedia.net/leagueoflegends/Special:Stream/twitch/Riot_Games""]"
+,Worlds 2024,FNC,DK,2024-10-03T22:00:00+07:00,"[""https://liquipedia.net/leagueoflegends/Special:Stream/twitch/Riot_Games""]"
+,Worlds 2024,TL,LNG,2024-10-03T23:00:00+07:00,"[""https://liquipedia.net/leagueoflegends/Special:Stream/twitch/Riot_Games""]"
+,Worlds 2024,HLE,PSG,2024-10-04T00:00:00+07:00,"[""https://liquipedia.net/leagueoflegends/Special:Stream/twitch/Riot_Games""]"
+,Worlds 2024,FLY,GAM,2024-10-04T01:00:00+07:00,"[""https://liquipedia.net/leagueoflegends/Special:Stream/twitch/Riot_Games""]"
+,Worlds 2024,G2,PNG,2024-10-04T02:00:00+07:00,"[""https://liquipedia.net/leagueoflegends/Special:Stream/twitch/Riot_Games""]"

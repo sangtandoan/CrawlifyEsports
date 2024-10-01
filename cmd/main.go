@@ -404,48 +404,52 @@ func crawlMatchesForLOL() {
 		mutex := &sync.Mutex{}
 
 		h.ForEach("table", func(_ int, el *colly.HTMLElement) {
-			// wg.Add(1)
-			// go func() {
-			// 	defer wg.Done()
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
 
-			team_left := el.ChildText("td.team-left")
-			team_right := el.ChildText("td.team-right")
-			if team_left != "TBD" && team_right != "TBD" {
-				link := el.ChildAttr("div.tournament-text-flex a", "href")
-				link = el.Request.AbsoluteURL(link)
+				team_left := el.ChildText("td.team-left")
+				team_right := el.ChildText("td.team-right")
+				if team_left != "TBD" && team_right != "TBD" {
+					link := el.ChildAttr("div.tournament-text-flex a", "href")
+					link = el.Request.AbsoluteURL(link)
 
-				if isTournamentInTiers(link) {
-					// crawl startTime
-					// When parsing a time with a zone abbreviation like MST, if the zone abbreviation has a defined offset in the current location, then that offset is used.
-					// The zone abbreviation "UTC" is recognized as UTC regardless of location.
-					// If the zone abbreviation is unknown, Parse records the time as being in a fabricated location with the given zone abbreviation and a zero offset.
-					// This choice means that such a time can be parsed and reformatted with the same layout losslessly, but the exact instant used in the representation will differ by the actual zone offset.
-					// To avoid such problems, prefer time layouts that use a numeric zone offset, or use ParseInLocation.
-					// -> If time has timezone use time.LoadLocation to load that timezone to parse and load local to parse again
-					startTime := el.ChildText("span.match-countdown span.timer-object")
-					cest, _ := time.LoadLocation("CET")
-					t, _ := time.ParseInLocation("January 02, 2006 - 15:04 MST", startTime, cest)
-					// Load loocal time
-					loc, _ := time.LoadLocation("Local")
-					// timeInUTCPlus7 := time.FixedZone("UTC+7", 7*60*60)
-					// Change time to local time
-					t = t.In(loc)
+					if isTournamentInTiers(link) {
+						// crawl startTime
+						// When parsing a time with a zone abbreviation like MST, if the zone abbreviation has a defined offset in the current location, then that offset is used.
+						// The zone abbreviation "UTC" is recognized as UTC regardless of location.
+						// If the zone abbreviation is unknown, Parse records the time as being in a fabricated location with the given zone abbreviation and a zero offset.
+						// This choice means that such a time can be parsed and reformatted with the same layout losslessly, but the exact instant used in the representation will differ by the actual zone offset.
+						// To avoid such problems, prefer time layouts that use a numeric zone offset, or use ParseInLocation.
+						// -> If time has timezone use time.LoadLocation to load that timezone to parse and load local to parse again
+						startTime := el.ChildText("span.match-countdown span.timer-object")
+						cest, _ := time.LoadLocation("CET")
+						t, err := time.ParseInLocation("January 2, 2006 - 15:04 MST", startTime, cest)
+						if err != nil {
+							fmt.Println(err)
+						}
+						// Load loocal time
+						loc, _ := time.LoadLocation("Local")
+						// timeInUTCPlus7 := time.FixedZone("UTC+7", 7*60*60)
+						// Change time to local time
+						t = t.In(loc)
 
-					// crawl TournamentName
+						link := el.Request.AbsoluteURL(el.ChildAttr("span.match-countdown a", "href"))
 
-					match := Match{
-						TournamentName: el.ChildText("div.tournament-text-flex a"),
-						TeamLeft:       team_left,
-						TeamRight:      team_right,
-						StartTime:      t,
+						match := Match{
+							TournamentName: el.ChildText("div.tournament-text-flex a"),
+							TeamLeft:       team_left,
+							TeamRight:      team_right,
+							StartTime:      t,
+							Links:          []string{link},
+						}
+
+						mutex.Lock()
+						matches["lol"] = append(matches["lol"], match)
+						mutex.Unlock()
 					}
-
-					mutex.Lock()
-					matches["lol"] = append(matches["lol"], match)
-					mutex.Unlock()
 				}
-			}
-			// }()
+			}()
 		})
 
 		wg.Wait()
