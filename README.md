@@ -4,7 +4,7 @@
 ## Motivation
 Esport has rapidly grown into a massive global industry, with countless tournaments and matches taking place across various games every day. Keeping up with all this information, especially for fans and professionals alike, can be challenging.
 
-[Liquipedia](https://liquipedia.net/) is one of the most comprehensive resources for esports information, but manually browsing for tournament and match data can be time-consuming. `CrawlifyEsports` was created to streamline this process by automating the extraction of tournament details and upcoming matches directly from [Liquipedia](https://liquipedia.net/).
+Liquipedia is one of the most comprehensive resources for esports information, but manually browsing for tournament and match data can be time-consuming. `CrawlifyEsports` was created to streamline this process by automating the extraction of tournament details and upcoming matches directly from Liquipedia.
 
 ## 🚀 Quick Start
 
@@ -17,7 +17,7 @@ git clone https://github.com/FrostJ143/GamesTournamentsScraper.git
 ### Run CrawlifyEsports to crawl all tournaments with a+ tier 
 
 ```bash
-./main -tier=a
+./crawlify -tier=a
 ```
 
 ## Usage
