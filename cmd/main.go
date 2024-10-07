@@ -5,6 +5,9 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
+	"net"
+	"net/http"
 	"os"
 	"slices"
 	"strings"
@@ -13,6 +16,7 @@ import (
 
 	"github.com/gocarina/gocsv"
 	"github.com/gocolly/colly"
+	"github.com/ipinfo/go/v2/ipinfo"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
 )
@@ -67,6 +71,7 @@ var (
 
 	tournaments = make(map[string][]Tournament) // map[string][]tournament{}, init empty map
 	matches     = make(map[string][]Match)
+	timeZone    = "Local"
 )
 
 // gameSlice implement flag.Value interface
@@ -84,10 +89,25 @@ func (gs *gamesSlice) Set(value string) error {
 	return nil
 }
 
+const token = "5004afb124de6d"
+
 func main() {
 	start := time.Now()
 	// closeChan := make(chan bool)
 	// done := make(chan bool)
+
+	// create ipClient to fetch data from ip
+	ipClient := ipinfo.NewClient(nil, nil, token)
+	// fetch global IP
+	ip, err := getGlobalIP()
+	if err != nil {
+		fmt.Println(err)
+	}
+	info, err := ipClient.GetIPInfo(net.ParseIP(ip))
+	if err != nil {
+		fmt.Println(err)
+	}
+	timeZone = info.Timezone
 
 	args := parseCommandLineArgs()
 
@@ -146,7 +166,7 @@ func main() {
 	}
 
 	// Check if dir exist, if not create new one
-	_, err := os.Stat("data")
+	_, err = os.Stat("data")
 	if os.IsNotExist(err) {
 		err := os.Mkdir("data", 0755)
 		if err != nil {
@@ -283,7 +303,7 @@ func scrapingForGame(link string, tournaments map[string][]Tournament, key strin
 			startTime := el.ChildText("span.match-countdown")
 			t, _ := time.Parse("January 02, 2006 - 15:04 MST", startTime)
 			// Load loocal time
-			loc, _ := time.LoadLocation("Local")
+			loc, _ := time.LoadLocation(timeZone)
 			// Change time to local time
 			t = t.In(loc)
 			match := Match{TournamentName: tournamentName, StartTime: t, GameName: key}
@@ -429,7 +449,7 @@ func crawlMatchesForLOL() {
 							fmt.Println(err)
 						}
 						// Load loocal time
-						loc, _ := time.LoadLocation("Local")
+						loc, _ := time.LoadLocation(timeZone)
 						// timeInUTCPlus7 := time.FixedZone("UTC+7", 7*60*60)
 						// Change time to local time
 						t = t.In(loc)
@@ -707,4 +727,22 @@ func exportCSV() {
 	}()
 
 	wg.Wait()
+}
+
+// getGlobalIP send a GET request to ipinfo to get the global IP address
+func getGlobalIP() (string, error) {
+	res, err := http.Get("https://ipinfo.io/ip")
+	if err != nil {
+		return "", err
+	}
+
+	defer res.Body.Close()
+
+	// Read the response body
+	ip, err := io.ReadAll(res.Body)
+	if err != nil {
+		return "", err
+	}
+
+	return string(ip), nil
 }
