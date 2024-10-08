@@ -108,6 +108,7 @@ func main() {
 		fmt.Println(err)
 	}
 	timeZone = info.Timezone
+	fmt.Println(timeZone)
 
 	args := parseCommandLineArgs()
 
