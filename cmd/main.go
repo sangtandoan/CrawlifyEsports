@@ -19,6 +19,8 @@ import (
 	"github.com/ipinfo/go/v2/ipinfo"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
+
+	_ "time/tzdata"
 )
 
 type Tournament struct {
