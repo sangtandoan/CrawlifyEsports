@@ -305,6 +305,7 @@ func scrapingForGame(link string, tournaments map[string][]Tournament, key strin
 			t, _ := time.Parse("January 02, 2006 - 15:04 MST", startTime)
 			// Load loocal time
 			loc, _ := time.LoadLocation(timeZone)
+			fmt.Println(loc)
 			// Change time to local time
 			t = t.In(loc)
 			match := Match{TournamentName: tournamentName, StartTime: t, GameName: key}
@@ -451,6 +452,7 @@ func crawlMatchesForLOL() {
 						}
 						// Load loocal time
 						loc, _ := time.LoadLocation(timeZone)
+						fmt.Println(loc)
 						// timeInUTCPlus7 := time.FixedZone("UTC+7", 7*60*60)
 						// Change time to local time
 						t = t.In(loc)
