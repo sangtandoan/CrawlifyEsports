@@ -110,7 +110,6 @@ func main() {
 		fmt.Println(err)
 	}
 	timeZone = info.Timezone
-	fmt.Println(timeZone)
 
 	args := parseCommandLineArgs()
 
@@ -158,7 +157,11 @@ func main() {
 	// enc.Encode(tournaments)
 	//
 
-	crawlMatchesForLOL()
+	for _, lol := range args.chosenGames {
+		if lol == "lol" {
+			crawlMatchesForLOL()
+		}
+	}
 
 	// Sort tournaments, matches based on StartDate
 	sortByStartDate()
@@ -307,7 +310,6 @@ func scrapingForGame(link string, tournaments map[string][]Tournament, key strin
 			t, _ := time.Parse("January 02, 2006 - 15:04 MST", startTime)
 			// Load loocal time
 			loc, _ := time.LoadLocation(timeZone)
-			fmt.Println(loc)
 			// Change time to local time
 			t = t.In(loc)
 			match := Match{TournamentName: tournamentName, StartTime: t, GameName: key}
@@ -320,7 +322,8 @@ func scrapingForGame(link string, tournaments map[string][]Tournament, key strin
 				return ""
 			}()}
 
-			if match.TeamLeft != "TBD" && match.TeamRight != "TBD" {
+			fmt.Println(match.TournamentName, match.TeamLeft, match.Links[0])
+			if match.TeamLeft != "TBD" && match.TeamRight != "TBD" && match.Links[0] != "" {
 				ch2 <- match
 			}
 		})
